@@ -2,8 +2,6 @@
 
 A small REST API for managing a to-do list. Built with FastAPI as part of the FlyRank Internship, Backend Track, Week 2.
 
-Data is stored **in memory** — there is no database, so all tasks are lost when the server restarts. This is intentional for this stage of the program.
-
 ## How to run it
 
 1. Clone the repo and enter the folder:
@@ -73,3 +71,24 @@ Full CRUD cycle tested via "Try it out" — example of a successful `POST /tasks
 
 - An empty body `{}` on `POST /tasks` returns **422** (FastAPI's built-in Pydantic validation for a missing required field), while `{"title": ""}` returns **400** (our own validation for an empty string). Both are treated as "invalid input" from the user's perspective.
 - Task ids are assigned incrementally and are not reused after deletion.
+
+## Database
+
+Data is now stored in **SQLite** (`tasks.db`), not in memory — tasks survive a server restart.
+
+- **Why SQLite:** single file, zero setup, no separate server needed — perfect for a small project like this.
+- **Where it lives:** `tasks.db`, created automatically in the project folder on first run. It's git-ignored so every fresh clone starts with a clean seeded database.
+- **How to run:**
+```bash
+  python -m venv venv
+  venv\Scripts\activate       # Windows
+  pip install fastapi uvicorn
+  uvicorn main:app --reload --port 8000
+```
+- **Example query** (run in DB Browser):
+```sql
+  SELECT * FROM tasks WHERE done = 1;
+```
+  Returns only the completed tasks — currently `Push to GitHub`.
+
+![DB Browser](screenshots/db-browser.png)
