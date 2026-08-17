@@ -1,6 +1,6 @@
 # Task API — CRUD API with FastAPI
 
-A small REST API for managing a to-do list. Built with FastAPI as part of the FlyRank Internship, Backend Track, Week 2.
+A small REST API for managing a to-do list. Built with FastAPI as part of the FlyRank Internship, Backend Track.
 
 ## How to run it
 
@@ -19,7 +19,7 @@ A small REST API for managing a to-do list. Built with FastAPI as part of the Fl
 
 3. Install dependencies:
    ```bash
-   pip install fastapi uvicorn
+   pip install -r requirements.txt
    ```
 
 4. Start the server:
@@ -72,32 +72,67 @@ Full CRUD cycle tested via "Try it out" — example of a successful `POST /tasks
 - An empty body `{}` on `POST /tasks` returns **422** (FastAPI's built-in Pydantic validation for a missing required field), while `{"title": ""}` returns **400** (our own validation for an empty string). Both are treated as "invalid input" from the user's perspective.
 - Task ids are assigned incrementally and are not reused after deletion.
 
-## Database
+## Database history
 
-Data is now stored in **SQLite** (`tasks.db`), not in memory — tasks survive a server restart.
+This project has moved through three storage engines, one assignment at a time, with the API staying the same the whole way:
 
-- **Why SQLite:** single file, zero setup, no separate server needed — perfect for a small project like this.
-- **Where it lives:** `tasks.db`, created automatically in the project folder on first run. It's git-ignored so every fresh clone starts with a clean seeded database.
-- **How to run:**
-```bash
-  python -m venv venv
-  venv\Scripts\activate       # Windows
-  pip install fastapi uvicorn
-  uvicorn main:app --reload --port 8000
-```
+1. **In-memory** (Assignment 1) — a Python list. Data was lost on every restart.
+2. **SQLite** (Assignment 2) — a single file, `tasks.db`. Data survived a restart, but only on one machine.
+3. **PostgreSQL in Docker** (Assignment 3, current) — a real database server, containerized, with the same API on top. See below for how to run it.
+
+### SQLite version (for reference)
+
+- **Why SQLite:** single file, zero setup, no separate server needed.
+- **Where it lives:** `tasks.db`, created automatically on first run.
 - **Example query** (run in DB Browser):
-```sql
+  ```sql
   SELECT * FROM tasks WHERE done = 1;
-```
-  Returns only the completed tasks — currently `Push to GitHub`.
+  ```
+  Returns only the completed tasks.
 
 ![DB Browser](screenshots/db-browser.png)
 
-## Stage 6 — AI vs me
+## Running with Docker (Postgres)
+
+One command starts the whole stack — app + database:
+
+```bash
+cp .env.example .env
+docker compose up
+```
+
+Then open http://localhost:8000/tasks.
+
+Environment variables are set in `.env` (copied from `.env.example`) — currently just `DATABASE_URL`, pointing at the `db` service defined in `compose.yaml`.
+
+### Endpoints
+
+Same five CRUD endpoints as before, now running against Postgres instead of SQLite:
+
+| Method | Path          | Description   |
+|--------|---------------|---------------|
+| GET    | /tasks        | List all tasks |
+| GET    | /tasks/{id}   | Get one task    |
+| POST   | /tasks        | Create a task   |
+| PUT    | /tasks/{id}   | Update a task   |
+| DELETE | /tasks/{id}   | Delete a task   |
+
+Example:
+```bash
+curl -i http://localhost:8000/tasks
+```
+
+### Persistence
+
+Data lives in a Docker volume (`taskdata`). Verified by running `docker compose down` then `docker compose up` — the seeded and created tasks were still there afterward, and the Postgres logs showed "Skipping initialization" instead of recreating the database from scratch.
+
+![Postgres data](screenshots/postgres-data.png)
+
+## Stage 6 — AI vs me (SQLite migration)
 
 I asked Manus (AI agent) to independently migrate the same in-memory CRUD API to SQLite, without giving it my code. My prompt:
 
-You have a FastAPI CRUD API that currently stores data in memory using a simple list or array, and you want to migrate it to SQLite. The stack should use Python, FastAPI, and the built-in sqlite3 library. Create a tasks table with the columns id, title, and done. If the table does not exist, it should be created automatically. If the table is empty, insert three sample tasks only once, so they are not added again after a restart. The same five endpoints—GET /tasks, GET /tasks/{id}, POST /tasks, PUT /tasks/{id}, and DELETE /tasks—must keep the same behavior. Return a 400 error when the title is empty and a 404 error when an ID is not found. All SQL queries must use parameterized statements, and user input must never be concatenated directly into SQL strings.
+> You have a FastAPI CRUD API that currently stores data in memory using a simple list or array, and you want to migrate it to SQLite. The stack should use Python, FastAPI, and the built-in sqlite3 library. Create a tasks table with the columns id, title, and done. If the table does not exist, it should be created automatically. If the table is empty, insert three sample tasks only once, so they are not added again after a restart. The same five endpoints—GET /tasks, GET /tasks/{id}, POST /tasks, PUT /tasks/{id}, and DELETE /tasks—must keep the same behavior. Return a 400 error when the title is empty and a 404 error when an ID is not found. All SQL queries must use parameterized statements, and user input must never be concatenated directly into SQL strings.
 
 I put its output in `ai-version/main.py`, ran it against my own checkpoints, and diffed it against my hand-built version.
 
@@ -120,35 +155,3 @@ I put its output in `ai-version/main.py`, ran it against my own checkpoints, and
 - I didn't mention the `/` and `/health` endpoints at all, so the AI didn't know they needed to carry over.
 
 **One rematch:** adding explicit status codes (201/204), a partial-update requirement for `PUT`, and a note to keep `/` and `/health` unchanged would likely close most of these gaps in a second pass.
-
-## Running with Docker (Postgres)
-
-One command starts the whole stack — app + database:
-
-\`\`\`bash
-cp .env.example .env
-docker compose up
-\`\`\`
-
-Then open http://localhost:8000/tasks.
-
-### Endpoints
-
-| Method | Path          | Description        |
-|--------|---------------|---------------------|
-| GET    | /tasks        | List all tasks      |
-| GET    | /tasks/{id}   | Get one task        |
-| POST   | /tasks        | Create a task        |
-| PUT    | /tasks/{id}   | Update a task        |
-| DELETE | /tasks/{id}   | Delete a task        |
-
-Example:
-\`\`\`bash
-curl -i http://localhost:8000/tasks
-\`\`\`
-
-### Persistence
-
-Data lives in a Docker volume (\`taskdata\`). Verified by running \`docker compose down\` then \`docker compose up\` — the seeded and created tasks were still there afterward.
-
-![Postgres data](screenshots/postgres-data.png)
