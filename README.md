@@ -120,3 +120,35 @@ I put its output in `ai-version/main.py`, ran it against my own checkpoints, and
 - I didn't mention the `/` and `/health` endpoints at all, so the AI didn't know they needed to carry over.
 
 **One rematch:** adding explicit status codes (201/204), a partial-update requirement for `PUT`, and a note to keep `/` and `/health` unchanged would likely close most of these gaps in a second pass.
+
+## Running with Docker (Postgres)
+
+One command starts the whole stack — app + database:
+
+\`\`\`bash
+cp .env.example .env
+docker compose up
+\`\`\`
+
+Then open http://localhost:8000/tasks.
+
+### Endpoints
+
+| Method | Path          | Description        |
+|--------|---------------|---------------------|
+| GET    | /tasks        | List all tasks      |
+| GET    | /tasks/{id}   | Get one task        |
+| POST   | /tasks        | Create a task        |
+| PUT    | /tasks/{id}   | Update a task        |
+| DELETE | /tasks/{id}   | Delete a task        |
+
+Example:
+\`\`\`bash
+curl -i http://localhost:8000/tasks
+\`\`\`
+
+### Persistence
+
+Data lives in a Docker volume (\`taskdata\`). Verified by running \`docker compose down\` then \`docker compose up\` — the seeded and created tasks were still there afterward.
+
+![Postgres data](screenshots/postgres-data.png)
